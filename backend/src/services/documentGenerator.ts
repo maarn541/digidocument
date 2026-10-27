@@ -2,8 +2,18 @@ import PDFDocument from 'pdfkit';
 import QRCode from 'qrcode';
 import fs from 'fs';
 import path from 'path';
-import { prisma } from '../config/db.js';
+import {
+  Request as RequestModel,
+  Student,
+  User,
+  DocumentType,
+  Department,
+  Course,
+  Faculty,
+  GeneratedDocument,
+} from '../models/index.js';
 import { createNotification, createAuditLog } from './auditService.js';
+import { notifyDocumentReady } from './emailService.js';
 
 const DOCS_DIR = path.join(process.cwd(), 'generated-docs');
 if (!fs.existsSync(DOCS_DIR)) {
@@ -11,40 +21,42 @@ if (!fs.existsSync(DOCS_DIR)) {
 }
 
 export async function generateAcademicPDF(requestId: string, operatorUserId: string) {
-  const request = await prisma.request.findUnique({
-    where: { id: requestId },
-    include: {
-      student: {
-        include: {
-          user: true,
-          department: true,
-          course: true,
-          advisor: { include: { user: true } }
-        }
-      },
-      documentType: true,
-      department: true
-    }
-  });
+  const request = await RequestModel.findById(requestId)
+    .populate({
+      path: 'studentId',
+      populate: [
+        { path: 'userId', model: 'User' },
+        { path: 'departmentId', model: 'Department' },
+        { path: 'courseId', model: 'Course' },
+        { path: 'advisorId', model: 'Faculty', populate: { path: 'userId', model: 'User' } },
+      ],
+    })
+    .populate('documentTypeId')
+    .populate('departmentId')
+    .lean() as any;
 
   if (!request) throw new Error('Request not found');
 
+  const student = request.studentId as any;
+  const studentUser = student?.userId as any;
+  const department = student?.departmentId as any;
+  const course = student?.courseId as any;
+  const advisor = student?.advisorId as any;
+  const advisorUser = advisor?.userId as any;
+  const documentType = request.documentTypeId as any;
+
   const docCode = `DOC-${new Date().getFullYear()}-${Math.floor(100000 + Math.random() * 900000)}`;
   const verificationCode = `VERIFY-${Math.random().toString(36).substring(2, 9).toUpperCase()}`;
-  const fileName = `${request.documentType.code}_${request.requestNumber}_${Date.now()}.pdf`;
+  const fileName = `${documentType.code}_${request.requestNumber}_${Date.now()}.pdf`;
   const filePath = path.join(DOCS_DIR, fileName);
 
   const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
   const verificationUrl = `${clientUrl}/verify/${verificationCode}`;
 
-  // Generate QR Code data URL
   const qrDataUrl = await QRCode.toDataURL(verificationUrl, {
     margin: 1,
     width: 120,
-    color: {
-      dark: '#1e1b4b',
-      light: '#ffffff'
-    }
+    color: { dark: '#1e1b4b', light: '#ffffff' },
   });
 
   const doc = new PDFDocument({ size: 'A4', margin: 40 });
@@ -55,15 +67,13 @@ export async function generateAcademicPDF(requestId: string, operatorUserId: str
   doc.rect(20, 20, 555, 802).lineWidth(2).strokeColor('#3730a3').stroke();
   doc.rect(24, 24, 547, 794).lineWidth(0.8).strokeColor('#c7d2fe').stroke();
 
-  // Institution Header
   doc.fillColor('#1e1b4b').fontSize(20).font('Helvetica-Bold').text('NATIONAL INSTITUTE OF ADVANCED TECHNOLOGY', 40, 50, { align: 'center' });
   doc.fontSize(10).font('Helvetica').fillColor('#475569').text('Accredited "A++" Grade by NAAC | Approved by AICTE & UGC', { align: 'center' });
   doc.text('Knowledge Park Campus, Tech City, Sector-4, New Delhi - 110001, India', { align: 'center' });
   doc.text('Website: www.niat.edu.in | Email: registrar@niat.edu.in', { align: 'center' });
-  
+
   doc.moveTo(40, 115).lineTo(555, 115).lineWidth(1.5).strokeColor('#4338ca').stroke();
 
-  // Document Info Bar
   doc.fontSize(9).font('Helvetica-Bold').fillColor('#334155');
   doc.text(`Document Ref: ${docCode}`, 45, 125);
   doc.text(`Issue Date: ${new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' })}`, 400, 125, { align: 'right' });
@@ -72,40 +82,25 @@ export async function generateAcademicPDF(requestId: string, operatorUserId: str
 
   doc.moveDown(2);
 
-  const docType = request.documentType.code;
+  const docTypeCode = documentType?.code;
 
-  if (docType === 'BONAFIDE') {
-    // BONAFIDE CERTIFICATE
+  if (docTypeCode === 'BONAFIDE') {
     doc.fontSize(18).font('Helvetica-Bold').fillColor('#1e1b4b').text('BONAFIDE CERTIFICATE', 40, 180, { align: 'center', underline: true });
-    
     doc.moveDown(2);
     doc.fontSize(12).font('Helvetica').fillColor('#1e293b').lineGap(10);
-    
-    const bonafideText = `This is to certify that Mr./Ms. ${request.student.user.name.toUpperCase()} (Student ID: ${request.student.studentIdNumber}) is a bonafide student of this Institute.`;
-    doc.text(bonafideText, 50, 240, { align: 'justify' });
-    
-    const detailsText = `He/She is currently enrolled in Year ${request.student.currentYear} (Semester ${request.student.currentSemester}) of the 4-Year ${request.student.course.name} program under the Department of ${request.student.department.name} for the Academic Session ${request.student.academicBatch}.`;
-    doc.text(detailsText, 50, 290, { align: 'justify' });
-
-    const purposeText = `This certificate is officially issued on the student's request for the purpose of: "${request.purpose}".`;
-    doc.text(purposeText, 50, 350, { align: 'justify' });
-
-    const conductText = `During his/her tenure at this Institute, his/her academic performance, attendance, and character have been found to be Good.`;
-    doc.text(conductText, 50, 400, { align: 'justify' });
-
-  } else if (docType === 'TRANSCRIPT') {
-    // TRANSCRIPT CERTIFICATE
+    doc.text(`This is to certify that Mr./Ms. ${studentUser?.name?.toUpperCase()} (Student ID: ${student?.studentIdNumber}) is a bonafide student of this Institute.`, 50, 240, { align: 'justify' });
+    doc.text(`He/She is currently enrolled in Year ${student?.currentYear} (Semester ${student?.currentSemester}) of the 4-Year ${course?.name} program under the Department of ${department?.name} for the Academic Session ${student?.academicBatch}.`, 50, 290, { align: 'justify' });
+    doc.text(`This certificate is officially issued on the student's request for the purpose of: "${request.purpose}".`, 50, 350, { align: 'justify' });
+    doc.text(`During his/her tenure at this Institute, his/her academic performance, attendance, and character have been found to be Good.`, 50, 400, { align: 'justify' });
+  } else if (docTypeCode === 'TRANSCRIPT') {
     doc.fontSize(18).font('Helvetica-Bold').fillColor('#1e1b4b').text('OFFICIAL ACADEMIC TRANSCRIPT', 40, 170, { align: 'center', underline: true });
-    
     doc.fontSize(10).font('Helvetica').fillColor('#1e293b');
-    doc.text(`Student Name: ${request.student.user.name}`, 50, 205);
-    doc.text(`Roll / ID: ${request.student.studentIdNumber}`, 350, 205);
-    doc.text(`Program: ${request.student.course.name}`, 50, 220);
-    doc.text(`Department: ${request.student.department.name}`, 350, 220);
-    doc.text(`Academic Batch: ${request.student.academicBatch}`, 50, 235);
-    doc.text(`Cumulative GPA (CGPA): ${request.student.cgpa.toFixed(2)} / 10.0`, 350, 235);
-
-    // Table Header
+    doc.text(`Student Name: ${studentUser?.name}`, 50, 205);
+    doc.text(`Roll / ID: ${student?.studentIdNumber}`, 350, 205);
+    doc.text(`Program: ${course?.name}`, 50, 220);
+    doc.text(`Department: ${department?.name}`, 350, 220);
+    doc.text(`Academic Batch: ${student?.academicBatch}`, 50, 235);
+    doc.text(`Cumulative GPA (CGPA): ${(student?.cgpa || 0).toFixed(2)} / 10.0`, 350, 235);
     doc.rect(45, 260, 505, 20).fill('#e0e7ff');
     doc.fillColor('#1e1b4b').fontSize(9).font('Helvetica-Bold');
     doc.text('Course Code', 55, 265);
@@ -113,7 +108,6 @@ export async function generateAcademicPDF(requestId: string, operatorUserId: str
     doc.text('Credits', 350, 265);
     doc.text('Grade', 420, 265);
     doc.text('Status', 480, 265);
-
     const subjects = [
       { code: 'CS501', title: 'Design & Analysis of Algorithms', credits: '4', grade: 'A+', status: 'Pass' },
       { code: 'CS502', title: 'Database Management Systems', credits: '4', grade: 'O', status: 'Pass' },
@@ -122,12 +116,9 @@ export async function generateAcademicPDF(requestId: string, operatorUserId: str
       { code: 'CS505', title: 'Software Engineering Laboratory', credits: '2', grade: 'O', status: 'Pass' },
       { code: 'HS501', title: 'Professional Ethics & Management', credits: '2', grade: 'A', status: 'Pass' },
     ];
-
     let y = 285;
     subjects.forEach((s, idx) => {
-      if (idx % 2 === 1) {
-        doc.rect(45, y - 3, 505, 18).fill('#f8fafc');
-      }
+      if (idx % 2 === 1) doc.rect(45, y - 3, 505, 18).fill('#f8fafc');
       doc.fillColor('#1e293b').fontSize(9).font('Helvetica');
       doc.text(s.code, 55, y);
       doc.text(s.title, 140, y);
@@ -136,60 +127,42 @@ export async function generateAcademicPDF(requestId: string, operatorUserId: str
       doc.text(s.status, 485, y);
       y += 20;
     });
-
     doc.moveDown(2);
-    doc.text(`Total Semester Credits: 19 | Semester GPA: ${(request.student.cgpa + 0.1).toFixed(2)} | Result: FIRST CLASS WITH DISTINCTION`, 50, y + 10, { font: 'Helvetica-Bold' });
-
-  } else if (docType === 'RECOMMENDATION') {
-    // RECOMMENDATION LETTER
+    doc.font('Helvetica-Bold').text(`Total Semester Credits: 19 | Semester GPA: ${((student?.cgpa || 0) + 0.1).toFixed(2)} | Result: FIRST CLASS WITH DISTINCTION`, 50, y + 10);
+  } else if (docTypeCode === 'RECOMMENDATION') {
     doc.fontSize(17).font('Helvetica-Bold').fillColor('#1e1b4b').text('LETTER OF RECOMMENDATION', 40, 175, { align: 'center', underline: true });
-    
     doc.moveDown(1.5);
     doc.fontSize(11).font('Helvetica').fillColor('#1e293b').lineGap(8);
     doc.text('TO WHOMSOEVER IT MAY CONCERN,', 50, 220);
-    
-    const recText1 = `I am delighted to write this recommendation on behalf of ${request.student.user.name} (ID: ${request.student.studentIdNumber}), who has been an exemplary student in the Department of ${request.student.department.name} at our Institute.`;
-    doc.text(recText1, 50, 245, { align: 'justify' });
-
-    const recText2 = `Throughout the academic program, ${request.student.user.name} has demonstrated exceptional intellectual curiosity, strong discipline, and profound command over core subjects. He/She maintains a commendable CGPA of ${request.student.cgpa.toFixed(2)}/10.0 and consistently ranks among top performers in practical and project coursework.`;
-    doc.text(recText2, 50, 305, { align: 'justify' });
-
-    const recText3 = `In addition to academics, the student actively engages in technical symposiums and collegiate problem-solving events. I am confident that ${request.student.user.name} will excel in higher educational pursuits or professional endeavors.`;
-    doc.text(recText3, 50, 380, { align: 'justify' });
-
-    const recText4 = `I give my highest recommendation for the purpose of: "${request.purpose}". Please feel free to reach out for further verification.`;
-    doc.text(recText4, 50, 450, { align: 'justify' });
-
+    doc.text(`I am delighted to write this recommendation on behalf of ${studentUser?.name} (ID: ${student?.studentIdNumber}), who has been an exemplary student in the Department of ${department?.name} at our Institute.`, 50, 245, { align: 'justify' });
+    doc.text(`Throughout the academic program, ${studentUser?.name} has demonstrated exceptional intellectual curiosity, strong discipline, and profound command over core subjects. He/She maintains a commendable CGPA of ${(student?.cgpa || 0).toFixed(2)}/10.0 and consistently ranks among top performers in practical and project coursework.`, 50, 305, { align: 'justify' });
+    doc.text(`In addition to academics, the student actively engages in technical symposiums and collegiate problem-solving events. I am confident that ${studentUser?.name} will excel in higher educational pursuits or professional endeavors.`, 50, 380, { align: 'justify' });
+    doc.text(`I give my highest recommendation for the purpose of: "${request.purpose}". Please feel free to reach out for further verification.`, 50, 450, { align: 'justify' });
   } else {
-    // GENERIC ACADEMIC CERTIFICATE
-    doc.fontSize(18).font('Helvetica-Bold').fillColor('#1e1b4b').text(`${request.documentType.name.toUpperCase()}`, 40, 180, { align: 'center', underline: true });
-    
+    doc.fontSize(18).font('Helvetica-Bold').fillColor('#1e1b4b').text(`${documentType?.name?.toUpperCase()}`, 40, 180, { align: 'center', underline: true });
     doc.fontSize(12).font('Helvetica').fillColor('#1e293b').lineGap(10);
-    doc.text(`This document is officially issued to ${request.student.user.name} (Student ID: ${request.student.studentIdNumber}) of the Department of ${request.student.department.name}.`, 50, 240, { align: 'justify' });
-    doc.text(`Program Enrolled: ${request.student.course.name} | Batch: ${request.student.academicBatch}.`, 50, 290, { align: 'justify' });
+    doc.text(`This document is officially issued to ${studentUser?.name} (Student ID: ${student?.studentIdNumber}) of the Department of ${department?.name}.`, 50, 240, { align: 'justify' });
+    doc.text(`Program Enrolled: ${course?.name} | Batch: ${student?.academicBatch}.`, 50, 290, { align: 'justify' });
     doc.text(`Purpose: ${request.purpose}`, 50, 330, { align: 'justify' });
     doc.text(`Verified and endorsed by the Office of Academic Affairs on behalf of the University Examination Board.`, 50, 370, { align: 'justify' });
   }
 
-  // Official Signature Block
+  // Signature Block
   const sigY = 620;
   doc.fontSize(10).font('Helvetica-Bold').fillColor('#0f172a');
-  
-  // Left: Faculty / Advisor
   doc.text('Verified By:', 50, sigY);
   doc.fontSize(9).font('Helvetica').fillColor('#475569');
-  doc.text(request.student.advisor?.user.name || 'Faculty Advisor / Reviewer', 50, sigY + 14);
-  doc.text(`Dept of ${request.student.department.name}`, 50, sigY + 26);
+  doc.text(advisorUser?.name || 'Faculty Advisor / Reviewer', 50, sigY + 14);
+  doc.text(`Dept of ${department?.name}`, 50, sigY + 26);
   doc.text('Digital Signature ID: #FAC-VERIFIED', 50, sigY + 38);
 
-  // Center: HOD
+  doc.fontSize(10).font('Helvetica-Bold').fillColor('#0f172a');
   doc.text('Approved By:', 220, sigY);
   doc.fontSize(9).font('Helvetica').fillColor('#475569');
   doc.text('Head of Department (HOD)', 220, sigY + 14);
-  doc.text(`Dept of ${request.student.department.name}`, 220, sigY + 26);
+  doc.text(`Dept of ${department?.name}`, 220, sigY + 26);
   doc.text('Digital Stamp: [DEPT_HOD_SEAL]', 220, sigY + 38);
 
-  // Right: Controller of Examinations / Academic Registrar
   doc.fontSize(10).font('Helvetica-Bold').fillColor('#0f172a');
   doc.text('Issued By:', 400, sigY);
   doc.fontSize(9).font('Helvetica').fillColor('#475569');
@@ -197,14 +170,11 @@ export async function generateAcademicPDF(requestId: string, operatorUserId: str
   doc.text('National Institute of Advanced Tech', 400, sigY + 26);
   doc.text('Registrar / Document Officer', 400, sigY + 38);
 
-  // Bottom QR Verification Section
+  // QR Section
   doc.rect(40, 695, 515, 95).fillAndStroke('#f8fafc', '#cbd5e1');
-  
-  // Embed QR Image buffer
   const qrBase64 = qrDataUrl.replace(/^data:image\/png;base64,/, '');
   const qrBuffer = Buffer.from(qrBase64, 'base64');
   doc.image(qrBuffer, 50, 702, { width: 80, height: 80 });
-
   doc.fontSize(11).font('Helvetica-Bold').fillColor('#1e1b4b');
   doc.text('OFFICIAL TAMPER-PROOF DIGITAL VERIFICATION', 145, 710);
   doc.fontSize(8.5).font('Helvetica').fillColor('#334155');
@@ -214,57 +184,51 @@ export async function generateAcademicPDF(requestId: string, operatorUserId: str
   doc.fontSize(7.5).font('Helvetica').fillColor('#64748b').text(`Security Hash: ${Buffer.from(verificationCode + docCode).toString('base64').substring(0, 32)} | Generated by NIAT Document Engine`, 145, 765);
 
   doc.end();
-
-  // Wait for stream to finish
-  await new Promise((resolve) => stream.on('finish', resolve));
+  await new Promise<void>((resolve) => stream.on('finish', () => resolve()));
 
   const stats = fs.statSync(filePath);
 
-  // Create or Update GeneratedDocument Record
-  const generatedDoc = await prisma.generatedDocument.upsert({
-    where: { requestId: request.id },
-    create: {
-      requestId: request.id,
+  // Upsert GeneratedDocument in MongoDB
+  const generatedDoc = await GeneratedDocument.findOneAndUpdate(
+    { requestId: request._id },
+    {
+      requestId: request._id,
       documentNumber: docCode,
       verificationCode,
       filePath,
       fileUrl: `/generated-docs/${fileName}`,
       fileSize: stats.size,
-      generatedByRole: 'OFFICE'
+      generatedByRole: 'OFFICE',
+      generatedAt: new Date(),
     },
-    update: {
-      documentNumber: docCode,
-      verificationCode,
-      filePath,
-      fileUrl: `/generated-docs/${fileName}`,
-      fileSize: stats.size,
-      generatedAt: new Date()
-    }
-  });
+    { upsert: true, new: true }
+  ).lean();
 
   // Update Request status
-  await prisma.request.update({
-    where: { id: requestId },
-    data: {
-      status: 'READY_FOR_DOWNLOAD'
-    }
-  });
+  await RequestModel.findByIdAndUpdate(requestId, { status: 'READY_FOR_DOWNLOAD' });
 
   // Notify student
   await createNotification(
-    request.student.user.id,
-    `Document Ready: ${request.documentType.name}`,
-    `Your ${request.documentType.name} (${request.requestNumber}) has been generated and is ready for download!`,
+    studentUser?._id?.toString(),
+    `Document Ready: ${documentType?.name}`,
+    `Your ${documentType?.name} (${request.requestNumber}) has been generated and is ready for download!`,
     'SUCCESS',
-    `/student/requests/${request.id}`
+    `/student/requests/${request._id}`
   );
 
-  // Audit Log
-  await createAuditLog(
-    operatorUserId,
-    request.id,
-    `Document ${docCode} generated for request ${request.requestNumber}`
-  );
+  await createAuditLog(operatorUserId, requestId, `Document ${docCode} generated for request ${request.requestNumber}`);
+
+  if (studentUser?.email) {
+    notifyDocumentReady({
+      studentEmail: studentUser.email,
+      studentName: studentUser.name,
+      requestNumber: request.requestNumber,
+      documentName: documentType?.name,
+      documentCode: docCode,
+      verificationCode,
+      requestId: request._id?.toString(),
+    }).catch(err => console.error('Email dispatch error on document ready:', err));
+  }
 
   return generatedDoc;
 }

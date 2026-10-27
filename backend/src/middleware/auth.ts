@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import { prisma } from '../config/db.js';
+import { User, Student, Faculty, Department, Course } from '../models/index.js';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_jwt_key_academic_document_system_2026';
 
@@ -25,30 +25,45 @@ export const authenticateJWT = async (req: AuthRequest, res: Response, next: Nex
   const token = authHeader.split(' ')[1];
   try {
     const decoded = jwt.verify(token, JWT_SECRET) as { id: string; email: string; role: string };
-    const user = await prisma.user.findUnique({
-      where: { id: decoded.id },
-      include: {
-        studentProfile: {
-          include: { department: true, course: true, advisor: { include: { user: true } } }
-        },
-        facultyProfile: {
-          include: { department: true }
-        }
-      }
-    });
 
+    const user = await User.findById(decoded.id).lean();
     if (!user || user.status !== 'ACTIVE') {
       res.status(403).json({ error: 'Account inactive or not found' });
       return;
     }
 
+    // Fetch associated profile
+    let studentProfile: any = null;
+    let facultyProfile: any = null;
+
+    if (user.role === 'STUDENT') {
+      studentProfile = await Student.findOne({ userId: user._id })
+        .populate('departmentId', 'name code')
+        .populate('courseId', 'name code')
+        .populate({ path: 'advisorId', populate: { path: 'userId', model: 'User', select: 'name email' } })
+        .lean();
+      if (studentProfile) {
+        studentProfile.department = studentProfile.departmentId;
+        studentProfile.course = studentProfile.courseId;
+        studentProfile.advisor = studentProfile.advisorId;
+      }
+    } else if (user.role === 'FACULTY' || user.role === 'HOD') {
+      facultyProfile = await Faculty.findOne({ userId: user._id })
+        .populate('departmentId')
+        .lean();
+      if (facultyProfile) {
+        facultyProfile.department = facultyProfile.departmentId;
+        facultyProfile.departmentId = facultyProfile.departmentId?._id?.toString() || facultyProfile.departmentId;
+      }
+    }
+
     req.user = {
-      id: user.id,
+      id: (user._id as any).toString(),
       email: user.email,
       role: user.role,
       name: user.name,
-      studentProfile: user.studentProfile,
-      facultyProfile: user.facultyProfile
+      studentProfile,
+      facultyProfile,
     };
 
     next();

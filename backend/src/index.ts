@@ -2,11 +2,12 @@ import express from 'express';
 import cors from 'cors';
 import path from 'path';
 import dotenv from 'dotenv';
-import { authRouter } from './src/routes/authRoutes.js';
-import { requestRouter } from './src/routes/requestRoutes.js';
-import { documentRouter } from './src/routes/documentRoutes.js';
-import { adminRouter } from './src/routes/adminRoutes.js';
-import { notificationRouter } from './src/routes/notificationRoutes.js';
+import { connectMongoDB } from './config/mongodb.js';
+import { authRouter } from './routes/authRoutes.js';
+import { requestRouter } from './routes/requestRoutes.js';
+import { documentRouter } from './routes/documentRoutes.js';
+import { adminRouter } from './routes/adminRoutes.js';
+import { notificationRouter } from './routes/notificationRoutes.js';
 
 dotenv.config();
 
@@ -38,14 +39,23 @@ app.get('/api/health', (req, res) => {
   res.json({
     status: 'online',
     system: 'Digital Academic Document Workflow System API',
+    database: 'MongoDB',
     timestamp: new Date().toISOString(),
   });
 });
 
-if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
-  app.listen(PORT, () => {
-    console.log(`🚀 Academic Workflow Server running at http://localhost:${PORT}`);
+// Connect to MongoDB then start server
+connectMongoDB()
+  .then(() => {
+    if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
+      app.listen(PORT, () => {
+        console.log(`🚀 Academic Workflow Server running at http://localhost:${PORT}`);
+      });
+    }
+  })
+  .catch((err) => {
+    console.error('Failed to start server — MongoDB connection error:', err);
+    process.exit(1);
   });
-}
 
 export default app;

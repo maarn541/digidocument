@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import {
@@ -15,15 +15,20 @@ import {
   CheckCircle2,
   Sparkles,
   ShieldCheck,
-  UserCheck
+  UserCheck,
+  Clock,
+  ArrowLeft
 } from 'lucide-react';
 
 export const RegisterPage: React.FC = () => {
-  const { login } = useAuth();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
 
   const [departments, setDepartments] = useState<any[]>([]);
-  const [role, setRole] = useState<'STUDENT' | 'FACULTY'>('STUDENT');
+  const initialRole = (searchParams.get('role')?.toUpperCase() || 'STUDENT') as 'STUDENT' | 'FACULTY' | 'HOD' | 'OFFICE' | 'ADMIN';
+  const [role, setRole] = useState<'STUDENT' | 'FACULTY' | 'HOD' | 'OFFICE' | 'ADMIN'>(
+    ['STUDENT', 'FACULTY', 'HOD', 'OFFICE', 'ADMIN'].includes(initialRole) ? initialRole : 'STUDENT'
+  );
 
   // Form Fields
   const [name, setName] = useState('');
@@ -42,6 +47,7 @@ export const RegisterPage: React.FC = () => {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [successInfo, setSuccessInfo] = useState<{ name: string; email: string; role: string } | null>(null);
 
   const DEFAULT_DEPTS = [
     {
@@ -145,17 +151,15 @@ export const RegisterPage: React.FC = () => {
         academicBatch: role === 'STUDENT' ? academicBatch : undefined,
         phone,
         advisorId: role === 'STUDENT' ? advisorId : undefined,
-        designation: role === 'FACULTY' ? designation : undefined,
+        designation: role !== 'STUDENT' ? designation : undefined,
       };
 
       const res = await api.post('/auth/register', payload);
-      login(res.data.token, res.data.user);
-
-      if (role === 'STUDENT') {
-        navigate('/student/dashboard');
-      } else {
-        navigate('/faculty/dashboard');
-      }
+      setSuccessInfo({
+        name,
+        email,
+        role,
+      });
     } catch (err: any) {
       setError(err.response?.data?.error || 'Registration failed. Please check your information.');
     } finally {
@@ -164,6 +168,71 @@ export const RegisterPage: React.FC = () => {
   };
 
   const selectedDeptObj = departments.find((d) => d.id === departmentId);
+
+  // Success Confirmation Screen (Awaiting Admin Approval)
+  if (successInfo) {
+    const portalKeyMap: Record<string, string> = {
+      STUDENT: 'student',
+      FACULTY: 'faculty',
+      HOD: 'hod',
+      OFFICE: 'office',
+      ADMIN: 'admin'
+    };
+    const targetPortalKey = portalKeyMap[successInfo.role] || 'student';
+
+    return (
+      <div className="min-h-screen bg-slate-950 text-white py-12 px-4 sm:px-6 lg:px-8 flex items-center justify-center relative overflow-hidden">
+        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-amber-500/15 rounded-full blur-[140px] pointer-events-none" />
+
+        <div className="max-w-xl w-full bg-slate-900/95 backdrop-blur-xl border border-slate-800 rounded-3xl p-8 sm:p-10 shadow-2xl relative z-10 text-center">
+          <div className="w-16 h-16 rounded-3xl bg-amber-500/20 border border-amber-500/40 text-amber-400 flex items-center justify-center mx-auto shadow-xl shadow-amber-500/10">
+            <Clock className="w-8 h-8 animate-pulse" />
+          </div>
+
+          <span className="inline-block mt-4 text-[11px] font-bold px-3 py-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
+            Account Registration Submitted &bull; Pending Approval
+          </span>
+
+          <h1 className="text-2xl sm:text-3xl font-black text-white mt-3 tracking-tight">
+            Awaiting Administrator Approval
+          </h1>
+
+          <p className="text-sm text-slate-300 mt-3 leading-relaxed">
+            Welcome, <strong className="text-white">{successInfo.name}</strong>! Your account has been created for the <strong className="text-amber-300">{successInfo.role} Portal</strong> with email <span className="font-mono text-amber-200">{successInfo.email}</span>.
+          </p>
+
+          <div className="mt-6 p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-left text-xs text-amber-200 space-y-2">
+            <div className="font-bold flex items-center gap-1.5 text-amber-300">
+              <Sparkles className="w-4 h-4" /> Why can't I log in immediately?
+            </div>
+            <p className="text-slate-300 leading-relaxed">
+              As per university governance security policies, all new accounts across every portal must first be <strong>approved by the University Administrator</strong> before granting system access.
+            </p>
+            <p className="text-slate-300 leading-relaxed">
+              Once the administrator endorses your profile in the User Directory, your account status will transition to <strong className="text-emerald-400">ACTIVE</strong> and you will be able to log in.
+            </p>
+          </div>
+
+          <div className="mt-8 flex flex-col sm:flex-row gap-3">
+            <Link
+              to={`/login/${targetPortalKey}`}
+              className="flex-1 py-3 px-4 rounded-xl bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-white font-bold text-xs shadow-lg transition-all flex items-center justify-center gap-2"
+            >
+              <span>Go to Sign In Page</span>
+              <ArrowRight className="w-4 h-4" />
+            </Link>
+            <Link
+              to="/login"
+              className="py-3 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs border border-slate-700 transition-all flex items-center justify-center gap-1.5"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span>All Portals</span>
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-950 text-white py-12 px-4 sm:px-6 lg:px-8 flex items-center justify-center relative overflow-hidden">
@@ -179,32 +248,70 @@ export const RegisterPage: React.FC = () => {
             Create Real Institutional Account
           </h1>
           <p className="text-xs text-slate-400 mt-1">
-            Register with your real college email ID to submit and track official academic certificates
+            Register with your real college email ID. Accounts require Administrator approval before sign-in.
           </p>
 
-          {/* Role Toggle */}
-          <div className="mt-6 inline-flex p-1 bg-slate-800 rounded-2xl border border-slate-700">
+          {/* Portal Role Selector (All 5 Roles) */}
+          <div className="mt-6 grid grid-cols-2 sm:grid-cols-5 gap-2 p-1.5 bg-slate-800/90 rounded-2xl border border-slate-700">
             <button
               type="button"
-              onClick={() => setRole('STUDENT')}
-              className={`px-6 py-2 rounded-xl text-xs font-bold transition-all ${
+              onClick={() => { setRole('STUDENT'); setDesignation('Student'); }}
+              className={`py-2 px-2 rounded-xl text-xs font-bold transition-all flex flex-col items-center gap-1 ${
                 role === 'STUDENT'
-                  ? 'bg-brand-600 text-white shadow-md'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'bg-sky-600 text-white shadow-md shadow-sky-600/30'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
               }`}
             >
-              Student Account
+              <GraduationCap className="w-4 h-4" />
+              <span>Student</span>
             </button>
             <button
               type="button"
-              onClick={() => setRole('FACULTY')}
-              className={`px-6 py-2 rounded-xl text-xs font-bold transition-all ${
+              onClick={() => { setRole('FACULTY'); setDesignation('Assistant Professor'); }}
+              className={`py-2 px-2 rounded-xl text-xs font-bold transition-all flex flex-col items-center gap-1 ${
                 role === 'FACULTY'
-                  ? 'bg-brand-600 text-white shadow-md'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
               }`}
             >
-              Faculty / Advisor
+              <Award className="w-4 h-4" />
+              <span>Faculty</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => { setRole('HOD'); setDesignation('Head of Department'); }}
+              className={`py-2 px-2 rounded-xl text-xs font-bold transition-all flex flex-col items-center gap-1 ${
+                role === 'HOD'
+                  ? 'bg-purple-600 text-white shadow-md shadow-purple-600/30'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
+              }`}
+            >
+              <Building className="w-4 h-4" />
+              <span>HOD</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => { setRole('OFFICE'); setDesignation('Registrar / Officer'); }}
+              className={`py-2 px-2 rounded-xl text-xs font-bold transition-all flex flex-col items-center gap-1 ${
+                role === 'OFFICE'
+                  ? 'bg-amber-600 text-white shadow-md shadow-amber-600/30'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
+              }`}
+            >
+              <UserCheck className="w-4 h-4" />
+              <span>Office</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => { setRole('ADMIN'); setDesignation('System Administrator'); }}
+              className={`py-2 px-2 rounded-xl text-xs font-bold transition-all flex flex-col items-center gap-1 ${
+                role === 'ADMIN'
+                  ? 'bg-rose-600 text-white shadow-md shadow-rose-600/30'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
+              }`}
+            >
+              <ShieldCheck className="w-4 h-4" />
+              <span>Admin</span>
             </button>
           </div>
         </div>
@@ -332,13 +439,18 @@ export const RegisterPage: React.FC = () => {
             ) : (
               <div>
                 <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                  Academic Designation
+                  Designation / Title
                 </label>
                 <input
                   type="text"
                   value={designation}
                   onChange={(e) => setDesignation(e.target.value)}
-                  placeholder="Associate Professor / Class Advisor"
+                  placeholder={
+                    role === 'HOD' ? 'Head of Department' :
+                    role === 'OFFICE' ? 'Senior Administrative Officer / Registrar' :
+                    role === 'ADMIN' ? 'University System Administrator' :
+                    'Assistant Professor / Class Advisor'
+                  }
                   className="w-full px-4 py-2.5 rounded-xl bg-slate-800/80 border border-slate-700 text-white text-xs sm:text-sm focus:outline-none focus:border-brand-500"
                 />
               </div>

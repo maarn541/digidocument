@@ -1,57 +1,61 @@
 import { Router, Request, Response } from 'express';
-import { prisma } from '../config/db.js';
-import { authenticateJWT, AuthRequest, requireRoles } from '../middleware/auth.js';
+import { GeneratedDocument, DocumentType, WorkflowStage, Request as RequestModel } from '../models/index.js';
+import { authenticateJWT, AuthRequest } from '../middleware/auth.js';
 import { createAuditLog } from '../services/auditService.js';
 
 export const documentRouter = Router();
 
-// GET /api/documents/verify/:verificationCode - Public Verification Portal (No Auth required)
+// GET /api/documents/verify/:verificationCode - Public Verification Portal
 documentRouter.get('/verify/:verificationCode', async (req: Request, res: Response) => {
   try {
     const { verificationCode } = req.params;
 
-    const doc = await prisma.generatedDocument.findUnique({
-      where: { verificationCode },
-      include: {
-        request: {
-          include: {
-            documentType: true,
-            department: true,
-            student: {
-              include: {
-                user: { select: { name: true } },
-                course: true,
-                department: true
-              }
-            }
-          }
-        }
-      }
-    });
+    const doc = await GeneratedDocument.findOne({ verificationCode })
+      .populate({
+        path: 'requestId',
+        populate: [
+          { path: 'documentTypeId', model: 'DocumentType' },
+          { path: 'departmentId', model: 'Department' },
+          {
+            path: 'studentId',
+            model: 'Student',
+            populate: [
+              { path: 'userId', model: 'User', select: 'name' },
+              { path: 'courseId', model: 'Course' },
+              { path: 'departmentId', model: 'Department' },
+            ],
+          },
+        ],
+      })
+      .lean() as any;
 
     if (!doc) {
       res.status(404).json({
         valid: false,
-        error: 'Academic document record not found. Please verify the QR code or reference ID.'
+        error: 'Academic document record not found. Please verify the QR code or reference ID.',
       });
       return;
     }
+
+    const request = doc.requestId as any;
+    const student = request?.studentId as any;
+    const studentUser = student?.userId as any;
 
     res.json({
       valid: true,
       documentNumber: doc.documentNumber,
       verificationCode: doc.verificationCode,
-      documentType: doc.request.documentType.name,
-      documentCode: doc.request.documentType.code,
-      studentName: doc.request.student.user.name,
-      studentIdNumber: doc.request.student.studentIdNumber,
-      department: doc.request.department.name,
-      course: doc.request.student.course.name,
-      academicBatch: doc.request.student.academicBatch,
+      documentType: request?.documentTypeId?.name,
+      documentCode: request?.documentTypeId?.code,
+      studentName: studentUser?.name,
+      studentIdNumber: student?.studentIdNumber,
+      department: request?.departmentId?.name,
+      course: student?.courseId?.name,
+      academicBatch: student?.academicBatch,
       issuedDate: doc.generatedAt,
       issuingAuthority: 'National Institute of Advanced Technology (Office of Academic Affairs)',
       fileUrl: doc.fileUrl,
-      status: 'AUTHENTIC & VERIFIED'
+      status: 'AUTHENTIC & VERIFIED',
     });
   } catch (err: any) {
     console.error('Document verification error', err);
@@ -59,22 +63,24 @@ documentRouter.get('/verify/:verificationCode', async (req: Request, res: Respon
   }
 });
 
-// POST /api/documents/:id/track-download - Increment download count
+// POST /api/documents/:id/track-download
 documentRouter.post('/:id/track-download', authenticateJWT, async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
-    const doc = await prisma.generatedDocument.update({
-      where: { id },
-      data: {
-        downloadCount: { increment: 1 },
-        lastDownloadedAt: new Date()
-      },
-      include: { request: true }
-    });
+    const doc = await GeneratedDocument.findByIdAndUpdate(
+      id,
+      { $inc: { downloadCount: 1 }, lastDownloadedAt: new Date() },
+      { new: true }
+    ).lean() as any;
+
+    if (!doc) {
+      res.status(404).json({ error: 'Document not found' });
+      return;
+    }
 
     await createAuditLog(
       req.user?.id || null,
-      doc.requestId,
+      doc.requestId?.toString(),
       `User ${req.user?.name} downloaded document ${doc.documentNumber}`
     );
 
@@ -84,19 +90,17 @@ documentRouter.post('/:id/track-download', authenticateJWT, async (req: AuthRequ
   }
 });
 
-// GET /api/documents/types - List all active document types with workflows
+// GET /api/documents/types - Active document types with workflows
 documentRouter.get('/types', async (req: Request, res: Response) => {
   try {
-    const types = await prisma.documentType.findMany({
-      where: { isActive: true },
-      include: {
-        workflows: {
-          orderBy: { stageOrder: 'asc' }
-        }
-      },
-      orderBy: { createdAt: 'asc' }
-    });
-    res.json(types);
+    const types = await DocumentType.find({ isActive: true }).sort({ createdAt: 1 }).lean();
+    const result = await Promise.all(
+      types.map(async (dt: any) => {
+        const workflows = await WorkflowStage.find({ documentTypeId: dt._id }).sort({ stageOrder: 1 }).lean();
+        return { ...dt, id: dt._id?.toString(), workflows };
+      })
+    );
+    res.json(result);
   } catch (err: any) {
     res.status(500).json({ error: 'Failed to fetch document types' });
   }

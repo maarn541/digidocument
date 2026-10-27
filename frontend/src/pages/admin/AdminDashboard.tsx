@@ -61,7 +61,13 @@ export const AdminDashboard: React.FC = () => {
             to="/admin/users"
             className="px-4 py-2 bg-slate-800/80 hover:bg-slate-700 text-white rounded-xl text-xs font-bold border border-slate-700 transition-all flex items-center gap-1.5"
           >
-            <Users className="w-4 h-4 text-brand-400" /> User Directory
+            <Users className="w-4 h-4 text-brand-400" /> User Approvals & Directory
+          </Link>
+          <Link
+            to="/admin/documents"
+            className="px-4 py-2 bg-slate-800/80 hover:bg-slate-700 text-white rounded-xl text-xs font-bold border border-slate-700 transition-all flex items-center gap-1.5"
+          >
+            <FileCheck2 className="w-4 h-4 text-sky-400" /> Document Monitor
           </Link>
           <Link
             to="/admin/workflows"
@@ -73,10 +79,36 @@ export const AdminDashboard: React.FC = () => {
             to="/admin/audit-logs"
             className="px-4 py-2 bg-slate-800/80 hover:bg-slate-700 text-white rounded-xl text-xs font-bold border border-slate-700 transition-all flex items-center gap-1.5"
           >
-            <History className="w-4 h-4 text-emerald-400" /> Audit Log Explorer
+            <History className="w-4 h-4 text-emerald-400" /> Audit & Logins
           </Link>
         </div>
       </div>
+
+      {/* Pending User Approvals Quick Alert banner */}
+      {(overview.pendingUserApprovals || 0) > 0 && (
+        <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-amber-900">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-amber-500/20 flex items-center justify-center text-amber-700 shrink-0">
+              <Clock className="w-5 h-5 animate-pulse" />
+            </div>
+            <div>
+              <div className="text-xs font-bold text-amber-950 flex items-center gap-1.5">
+                <span>{overview.pendingUserApprovals} Account Registration{overview.pendingUserApprovals > 1 ? 's' : ''} Awaiting Approval</span>
+                <span className="px-2 py-0.5 rounded-full text-[10px] bg-amber-500 text-white font-black animate-pulse">Action Required</span>
+              </div>
+              <p className="text-[11px] text-amber-800 mt-0.5">
+                Newly registered students, faculty, or staff must be authorized by an admin before they can log in.
+              </p>
+            </div>
+          </div>
+          <Link
+            to="/admin/users"
+            className="px-3.5 py-1.5 bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs rounded-xl shadow-sm transition-all whitespace-nowrap self-end sm:self-center"
+          >
+            Review & Approve Users ({overview.pendingUserApprovals})
+          </Link>
+        </div>
+      )}
 
       {/* Metric Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
@@ -99,21 +131,21 @@ export const AdminDashboard: React.FC = () => {
         </div>
 
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-          <span className="text-[11px] font-bold text-slate-500 uppercase">Pending</span>
+          <span className="text-[11px] font-bold text-slate-500 uppercase">Doc Queue</span>
           <div className="text-2xl font-black text-amber-600 mt-2">{overview.pendingRequests || 0}</div>
-          <div className="text-[10px] text-amber-600 mt-1">Active in Queue</div>
+          <div className="text-[10px] text-amber-600 mt-1">Active in Review</div>
+        </div>
+
+        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+          <span className="text-[11px] font-bold text-slate-500 uppercase">User Approvals</span>
+          <div className="text-2xl font-black text-amber-500 mt-2">{overview.pendingUserApprovals || 0}</div>
+          <div className="text-[10px] text-amber-600 mt-1">Awaiting Sign-Off</div>
         </div>
 
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
           <span className="text-[11px] font-bold text-slate-500 uppercase">Completed</span>
           <div className="text-2xl font-black text-emerald-600 mt-2">{overview.completedDocuments || 0}</div>
           <div className="text-[10px] text-emerald-600 mt-1">Generated & Sealed</div>
-        </div>
-
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-          <span className="text-[11px] font-bold text-slate-500 uppercase">Rejected</span>
-          <div className="text-2xl font-black text-rose-600 mt-2">{overview.rejectedRequests || 0}</div>
-          <div className="text-[10px] text-rose-600 mt-1">With Feedback</div>
         </div>
       </div>
 

@@ -3,11 +3,15 @@ node_modules/
 dist/
 build/
 
-# Environment files
+# Environment and Secrets
+.env
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
+serviceAccountKey.json
+*.pem
+*.key
 
 # SQLite Database (allow fresh db recreation on clone)
 *.db

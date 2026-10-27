@@ -1,6 +1,5 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
 import {
   FileText,
   ShieldCheck,
@@ -16,21 +15,72 @@ import {
   User,
   Building,
   GraduationCap,
-  FileCheck
+  FileCheck,
+  Mail,
+  HelpCircle,
+  CheckSquare
 } from 'lucide-react';
 
 export const LandingPage: React.FC = () => {
-  const { switchDemoRole } = useAuth();
   const navigate = useNavigate();
 
-  const handleDemoStart = async (role: 'STUDENT' | 'FACULTY' | 'HOD' | 'OFFICE' | 'ADMIN') => {
-    await switchDemoRole(role);
-    if (role === 'STUDENT') navigate('/student/dashboard');
-    else if (role === 'FACULTY') navigate('/faculty/dashboard');
-    else if (role === 'HOD') navigate('/hod/dashboard');
-    else if (role === 'OFFICE') navigate('/office/dashboard');
-    else if (role === 'ADMIN') navigate('/admin/dashboard');
-  };
+  const modulePortals = [
+    {
+      role: 'student',
+      title: 'Student Portal',
+      subtitle: 'Aditya Verma (STU2023001)',
+      desc: 'Submit requests, track live stages & download verified PDFs.',
+      path: '/login/student',
+      badge: 'Student Access',
+      color: 'text-sky-400',
+      badgeColor: 'bg-sky-500/10 text-sky-300 border-sky-500/30',
+      borderColor: 'hover:border-sky-500/60'
+    },
+    {
+      role: 'faculty',
+      title: 'Faculty Advisor',
+      subtitle: 'Dr. Priya Sharma',
+      desc: 'Mentee verification, CGPA checks & stage-1 endorsements.',
+      path: '/login/faculty',
+      badge: 'Mentor Review',
+      color: 'text-indigo-400',
+      badgeColor: 'bg-indigo-500/10 text-indigo-300 border-indigo-500/30',
+      borderColor: 'hover:border-indigo-500/60'
+    },
+    {
+      role: 'hod',
+      title: 'Department HOD',
+      subtitle: 'Prof. Rajesh Kumar',
+      desc: 'Department executive review & clearance authorization.',
+      path: '/login/hod',
+      badge: 'Executive Sign-Off',
+      color: 'text-purple-400',
+      badgeColor: 'bg-purple-500/10 text-purple-300 border-purple-500/30',
+      borderColor: 'hover:border-purple-500/60'
+    },
+    {
+      role: 'office',
+      title: 'Academic Office',
+      subtitle: 'Ms. Eleanor Vance',
+      desc: 'PDF generation engine, digital seals & document issuance.',
+      path: '/login/office',
+      badge: 'PDF Engine & Seals',
+      color: 'text-emerald-400',
+      badgeColor: 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30',
+      borderColor: 'hover:border-emerald-500/60'
+    },
+    {
+      role: 'admin',
+      title: 'Administrator',
+      subtitle: 'Dr. Arthur Sterling',
+      desc: 'Workflow configuration, user roles & tamper-proof audit trail.',
+      path: '/login/admin',
+      badge: 'Governance & Audits',
+      color: 'text-rose-400',
+      badgeColor: 'bg-rose-500/10 text-rose-300 border-rose-500/30',
+      borderColor: 'hover:border-rose-500/60'
+    }
+  ];
 
   const documentTypes = [
     { title: 'Bonafide Certificate', desc: 'Instant student bonafide verification for bank loans, visas, and concessions.', days: '1-2 Days', icon: Award, tag: 'Most Requested' },
@@ -72,7 +122,7 @@ export const LandingPage: React.FC = () => {
               to="/login"
               className="px-8 py-4 rounded-xl bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-white font-bold text-base shadow-lg shadow-brand-600/30 hover:scale-105 transition-all flex items-center gap-2"
             >
-              Sign In to Portal
+              Select Portal to Sign In
               <ArrowRight className="w-5 h-5" />
             </Link>
             <Link
@@ -91,68 +141,59 @@ export const LandingPage: React.FC = () => {
             </Link>
           </div>
 
-          {/* Quick Demo Launchpad */}
-          <div className="mt-14 max-w-4xl mx-auto p-6 bg-slate-800/60 backdrop-blur-xl border border-slate-700/80 rounded-2xl shadow-2xl">
+          {/* Dedicated Module Login Portals */}
+          <div className="mt-14 max-w-5xl mx-auto p-6 bg-slate-800/60 backdrop-blur-xl border border-slate-700/80 rounded-2xl shadow-2xl">
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pb-4 border-b border-slate-700">
               <div className="text-left">
                 <h2 className="text-sm font-bold text-white flex items-center gap-2">
-                  <Zap className="w-4 h-4 text-amber-400" />
-                  Instant Demo Persona Launchpad
+                  <Lock className="w-4 h-4 text-brand-400" />
+                  Dedicated Module Login Portals
                 </h2>
                 <p className="text-xs text-slate-400">
-                  Click any role below to immediately enter the system with realistic preloaded data:
+                  Select your institutional module to access its dedicated secure login screen:
                 </p>
               </div>
-              <span className="text-[11px] font-semibold px-2.5 py-1 bg-brand-900/60 text-brand-300 border border-brand-500/30 rounded-lg">
-                Zero Configuration Required
-              </span>
+              <Link
+                to="/login"
+                className="text-[11px] font-semibold px-2.5 py-1 bg-brand-900/60 text-brand-300 border border-brand-500/30 rounded-lg hover:bg-brand-800/80 transition-colors"
+              >
+                View All Portals &rarr;
+              </Link>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mt-4">
-              <button
-                onClick={() => handleDemoStart('STUDENT')}
-                className="p-3 rounded-xl bg-slate-900/80 hover:bg-brand-600/30 border border-slate-700 hover:border-brand-500 text-left transition-all group"
-              >
-                <div className="text-brand-400 font-bold text-xs group-hover:text-brand-300">Student</div>
-                <div className="text-[11px] text-slate-300 font-medium">Aditya Verma</div>
-                <div className="text-[10px] text-slate-500 mt-1">Request & Download</div>
-              </button>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 mt-4">
+              {modulePortals.map((m) => (
+                <div
+                  key={m.role}
+                  className={`p-3.5 rounded-xl bg-slate-900/90 border border-slate-700 ${m.borderColor} text-left transition-all group flex flex-col justify-between`}
+                >
+                  <div>
+                    <span className={`inline-block text-[9px] font-bold px-2 py-0.5 rounded border mb-2 ${m.badgeColor}`}>
+                      {m.badge}
+                    </span>
+                    <div className={`${m.color} font-bold text-xs group-hover:underline`}>{m.title}</div>
+                    <div className="text-[11px] text-slate-300 font-medium mt-0.5">{m.subtitle}</div>
+                    <div className="text-[10px] text-slate-400 mt-1 leading-snug">{m.desc}</div>
+                  </div>
 
-              <button
-                onClick={() => handleDemoStart('FACULTY')}
-                className="p-3 rounded-xl bg-slate-900/80 hover:bg-brand-600/30 border border-slate-700 hover:border-brand-500 text-left transition-all group"
-              >
-                <div className="text-indigo-400 font-bold text-xs group-hover:text-indigo-300">Faculty Advisor</div>
-                <div className="text-[11px] text-slate-300 font-medium">Dr. Priya Sharma</div>
-                <div className="text-[10px] text-slate-500 mt-1">First Stage Review</div>
-              </button>
-
-              <button
-                onClick={() => handleDemoStart('HOD')}
-                className="p-3 rounded-xl bg-slate-900/80 hover:bg-brand-600/30 border border-slate-700 hover:border-brand-500 text-left transition-all group"
-              >
-                <div className="text-purple-400 font-bold text-xs group-hover:text-purple-300">Dept HOD</div>
-                <div className="text-[11px] text-slate-300 font-medium">Prof. Rajesh Kumar</div>
-                <div className="text-[10px] text-slate-500 mt-1">Department Signoff</div>
-              </button>
-
-              <button
-                onClick={() => handleDemoStart('OFFICE')}
-                className="p-3 rounded-xl bg-slate-900/80 hover:bg-brand-600/30 border border-slate-700 hover:border-brand-500 text-left transition-all group"
-              >
-                <div className="text-emerald-400 font-bold text-xs group-hover:text-emerald-300">Academic Office</div>
-                <div className="text-[11px] text-slate-300 font-medium">Ms. Eleanor Vance</div>
-                <div className="text-[10px] text-slate-500 mt-1">PDF Engine & Seal</div>
-              </button>
-
-              <button
-                onClick={() => handleDemoStart('ADMIN')}
-                className="p-3 rounded-xl bg-slate-900/80 hover:bg-brand-600/30 border border-slate-700 hover:border-brand-500 text-left transition-all group"
-              >
-                <div className="text-rose-400 font-bold text-xs group-hover:text-rose-300">Administrator</div>
-                <div className="text-[11px] text-slate-300 font-medium">Dr. Arthur Sterling</div>
-                <div className="text-[10px] text-slate-500 mt-1">Workflow Builder</div>
-              </button>
+                  <div className="mt-3 flex items-center gap-1.5">
+                    <Link
+                      to={m.path}
+                      className="flex-1 py-1.5 px-2 rounded-lg bg-slate-800 group-hover:bg-brand-600 text-slate-200 group-hover:text-white text-[11px] font-bold border border-slate-700 group-hover:border-brand-500 transition-all flex items-center justify-center gap-1"
+                    >
+                      <span>Sign In</span>
+                      <ArrowRight className="w-3 h-3 transition-transform group-hover:translate-x-0.5" />
+                    </Link>
+                    <Link
+                      to={`/register?role=${m.role}`}
+                      className="py-1.5 px-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-amber-300 hover:text-white text-[10px] font-semibold border border-slate-700/80 transition-all"
+                      title={`Register a new ${m.title} account`}
+                    >
+                      Register
+                    </Link>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </div>
@@ -267,6 +308,178 @@ export const LandingPage: React.FC = () => {
                 <div><span className="font-bold">Status:</span> <span className="text-emerald-700 font-bold">AUTHENTIC & VALID</span></div>
               </div>
               <div className="text-[11px] text-slate-400">Scanned via Public Verification Engine</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Enterprise Platform Features Section */}
+      <section id="features" className="py-24 bg-slate-900/90 border-t border-slate-800">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center max-w-3xl mx-auto mb-16">
+            <span className="px-3 py-1 bg-brand-500/10 border border-brand-400/30 text-brand-300 text-xs font-bold rounded-full">
+              Enterprise Grade Academic Technology
+            </span>
+            <h2 className="text-3xl sm:text-5xl font-black text-white mt-4 tracking-tight">
+              Powerful Features for Seamless Campus Governance
+            </h2>
+            <p className="mt-3 text-slate-400 text-sm sm:text-base leading-relaxed">
+              Designed to replace physical queues, manual paperwork, and forgery risks with unified cryptographic security and automated approval pipelines.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[
+              {
+                icon: ShieldCheck,
+                title: 'Mandatory Admin Verification & Onboarding',
+                desc: 'All user accounts across all 5 portals must be reviewed and approved by the University Administrator before login access is authorized, preventing unauthorized access.',
+                color: 'text-amber-400',
+                badge: 'Access Governance'
+              },
+              {
+                icon: Layers,
+                title: 'Multi-Tier Role State Machines',
+                desc: 'Configurable multi-step approval workflows (Class Advisor -> HOD -> Academic Office) tailored individually for each certificate and document type.',
+                color: 'text-indigo-400',
+                badge: 'Dynamic Pipelines'
+              },
+              {
+                icon: FileCheck,
+                title: 'Automated Cryptographic PDF Seals',
+                desc: 'Server-side vector PDF generation equipped with tamper-proof institutional seals, high-entropy verification codes, and dynamic scannable QR stamps.',
+                color: 'text-emerald-400',
+                badge: 'Tamper-Proof'
+              },
+              {
+                icon: Mail,
+                title: 'Real-Time Notification Engine',
+                desc: 'Instant email delivery to students and staff upon submission, faculty review, HOD sign-off, correction requests, and document readiness.',
+                color: 'text-sky-400',
+                badge: 'Live SMTP'
+              },
+              {
+                icon: Zap,
+                title: 'Instant QR Public Authenticator',
+                desc: 'Embassies, employers, and foreign universities can scan document QR codes to verify authenticity instantly without needing system login credentials.',
+                color: 'text-purple-400',
+                badge: 'Global Trust'
+              },
+              {
+                icon: Lock,
+                title: 'Immutable Audit Trail & Telemetry',
+                desc: 'Every login, approval click, rejection feedback, and document download is recorded with timestamps, user IDs, and audit actions.',
+                color: 'text-rose-400',
+                badge: 'Compliance & Audit'
+              }
+            ].map((feature, idx) => {
+              const Icon = feature.icon;
+              return (
+                <div
+                  key={idx}
+                  className="bg-slate-900/90 border border-slate-800 rounded-3xl p-6 sm:p-7 hover:border-brand-500/50 transition-all hover:shadow-2xl hover:shadow-brand-900/20 group flex flex-col justify-between"
+                >
+                  <div>
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="w-12 h-12 rounded-2xl bg-slate-800 border border-slate-700 flex items-center justify-center group-hover:scale-110 transition-transform">
+                        <Icon className={`w-6 h-6 ${feature.color}`} />
+                      </div>
+                      <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700">
+                        {feature.badge}
+                      </span>
+                    </div>
+                    <h3 className="text-lg font-bold text-white group-hover:text-brand-300 transition-colors">
+                      {feature.title}
+                    </h3>
+                    <p className="text-xs text-slate-400 mt-2 leading-relaxed">
+                      {feature.desc}
+                    </p>
+                  </div>
+                  <div className="mt-6 pt-4 border-t border-slate-800/80 flex items-center text-xs font-semibold text-brand-400 group-hover:translate-x-1 transition-transform">
+                    <span>Learn more in documentation &rarr;</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* Frequently Asked Questions (FAQ) Section */}
+      <section id="faq" className="py-24 bg-slate-950 border-t border-slate-800">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center max-w-2xl mx-auto mb-16">
+            <span className="px-3 py-1 bg-indigo-500/10 border border-indigo-400/30 text-indigo-300 text-xs font-bold rounded-full">
+              Frequently Asked Questions
+            </span>
+            <h2 className="text-3xl sm:text-4xl font-black text-white mt-4 tracking-tight">
+              Everything You Need to Know
+            </h2>
+            <p className="mt-3 text-slate-400 text-sm leading-relaxed">
+              Find answers to common questions regarding account creation, admin approvals, document issuance, and QR verification.
+            </p>
+          </div>
+
+          <div className="space-y-4">
+            {[
+              {
+                q: 'How do I create an account and access my portal?',
+                a: 'Click "Create Account" or "Register" from the top header or your portal login page. Fill in your name, college email, password, and department. Once submitted, your account status is set to "Pending Approval". As soon as the Administrator approves your account, you will be notified via email and can sign in.'
+              },
+              {
+                q: 'Why does my account say "Awaiting Admin Approval" when logging in?',
+                a: 'To guarantee university data security and verify that only enrolled students and authorized faculty access student academic records, all registrations must be endorsed by the System Administrator in the User Directory before the first login.'
+              },
+              {
+                q: 'Where does the Administrator review and approve new user signups?',
+                a: 'The Administrator signs in via the Admin Portal (/login/admin) and accesses the "User Directory" (/admin/users). An Attention Banner highlights all pending registrations with direct 1-click "Approve" and "Reject" buttons.'
+              },
+              {
+                q: 'What academic documents can students request online?',
+                a: 'Students can request Bonafide Certificates (for passports, bus passes, bank loans), Consolidated Transcripts, Course Completion Letters, Letters of Recommendation, and No-Due Clearances across departments.'
+              },
+              {
+                q: 'How does the multi-stage approval workflow work?',
+                a: 'When a student files a request, it is forwarded first to their assigned Class Advisor (Faculty Portal). Once approved, it advances to the Head of Department (HOD Portal). Finally, the Academic Office seals and generates the official QR-stamped PDF.'
+              },
+              {
+                q: 'How does third-party verification work for employers and embassies?',
+                a: 'Anyone can visit the Public QR Verifier (/verify) or scan the printed QR code using any smartphone camera. The system instantly displays the authentic document details from the university database without needing any login.'
+              }
+            ].map((faq, index) => (
+              <details
+                key={index}
+                className="group bg-slate-900/90 border border-slate-800 rounded-2xl p-5 hover:border-slate-700 transition-all [&_summary::-webkit-details-marker]:hidden"
+              >
+                <summary className="flex items-center justify-between cursor-pointer text-white font-bold text-sm sm:text-base group-hover:text-brand-300 transition-colors">
+                  <span>{faq.q}</span>
+                  <span className="w-7 h-7 rounded-lg bg-slate-800 flex items-center justify-center text-slate-400 group-open:rotate-180 transition-transform shrink-0 ml-4">
+                    <ArrowRight className="w-4 h-4 rotate-90" />
+                  </span>
+                </summary>
+                <p className="mt-3 text-xs sm:text-sm text-slate-400 leading-relaxed pt-2 border-t border-slate-800/80">
+                  {faq.a}
+                </p>
+              </details>
+            ))}
+          </div>
+
+          <div className="mt-12 text-center p-6 bg-slate-900/60 rounded-3xl border border-slate-800">
+            <h4 className="text-white font-bold text-sm">Still have questions about your university workflow?</h4>
+            <p className="text-xs text-slate-400 mt-1">Contact your department academic coordinator or registrar office for assistance.</p>
+            <div className="mt-4 flex items-center justify-center gap-3">
+              <Link
+                to="/register"
+                className="px-4 py-2 bg-brand-600 hover:bg-brand-500 text-white rounded-xl text-xs font-bold transition-all shadow-md"
+              >
+                Create Account Now
+              </Link>
+              <Link
+                to="/login"
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold transition-all border border-slate-700"
+              >
+                Go to Portals Hub
+              </Link>
             </div>
           </div>
         </div>

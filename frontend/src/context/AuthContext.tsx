@@ -63,7 +63,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const switchDemoRole = async (role: 'STUDENT' | 'FACULTY' | 'HOD' | 'OFFICE' | 'ADMIN') => {
     try {
       const creds = DEMO_CREDENTIALS[role];
-      const res = await api.post('/auth/login', creds);
+      const res = await api.post('/auth/login', { ...creds, expectedRole: role });
       login(res.data.token, res.data.user);
     } catch (err) {
       console.error('Error switching demo role:', err);
