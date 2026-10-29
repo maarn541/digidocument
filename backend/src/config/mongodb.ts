@@ -1,14 +1,13 @@
 import mongoose from 'mongoose';
 
-const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/certiflow';
-
 let isConnected = false;
 
 export async function connectMongoDB(): Promise<void> {
   if (isConnected) return;
 
   try {
-    await mongoose.connect(MONGO_URI, {
+    const mongoUri = process.env.MONGO_URI || 'mongodb://localhost:27017/certiflow';
+    await mongoose.connect(mongoUri, {
       serverSelectionTimeoutMS: 10000,
     });
     isConnected = true;

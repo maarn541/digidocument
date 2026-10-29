@@ -347,7 +347,8 @@ export const LoginPage: React.FC = () => {
                       <span>Create {portal.shortName} Account</span>
                     </Link>
                     <div className="mt-1 text-center text-[10px] text-slate-500 font-mono">
-                      Demo: {portal.demoEmail}
+                      <div>Demo login: {portal.demoEmail}</div>
+                      <div>Password: {portal.demoPassword}</div>
                     </div>
                   </div>
                 </div>
@@ -544,8 +545,9 @@ export const LoginPage: React.FC = () => {
             {/* Quick Credential Pre-fill for testing/evaluation */}
             <div className="p-3 bg-slate-800/50 rounded-2xl border border-slate-800 flex items-center justify-between gap-3 text-xs">
               <div className="text-left">
-                <span className="text-slate-400 block text-[11px]">Testing demo credentials:</span>
-                <span className="font-mono text-slate-200 text-xs">{activePortal.demoEmail}</span>
+                <span className="text-slate-400 block text-[11px]">Demo login credentials:</span>
+                <span className="font-mono text-slate-200 text-xs block">{activePortal.demoEmail}</span>
+                <span className="font-mono text-slate-300 text-[11px] block">Password: {activePortal.demoPassword}</span>
               </div>
               <button
                 type="button"

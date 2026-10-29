@@ -10,6 +10,7 @@
     "prisma:generate": "prisma generate",
     "prisma:push": "prisma db push",
     "seed": "tsx prisma/seed.ts",
+    "seed:mongodb": "tsx scripts/seedMongo.ts",
     "seed:firebase": "tsx scripts/seedFirebase.ts"
   },
   "dependencies": {

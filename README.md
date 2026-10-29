@@ -63,7 +63,7 @@ The project includes a frontend and backend application.
 
 * **Frontend:** Web application built with the technologies configured in the `frontend` directory.
 * **Backend:** Node.js application.
-* **Database:** Prisma-compatible database configuration.
+* **Database:** MongoDB through Mongoose for the running API.
 * **PDF Generation:** PDFKit.
 * **Email Notifications:** Gmail SMTP or another supported SMTP configuration.
 * **Firebase Integration:** Cloud Firestore and Firebase Storage, where configured.
@@ -80,7 +80,7 @@ Install the following before running the project:
 * Node.js 18 or later, subject to the requirements of the installed dependencies.
 * npm.
 * Git.
-* A compatible database configured for Prisma.
+* MongoDB, configured through `backend/.env` or the default local connection.
 * A Firebase project if Firebase features are required.
 * Gmail SMTP credentials or another SMTP service if real email notifications are required.
 
@@ -128,23 +128,17 @@ SMTP_FROM_NAME="CertiFlow Academic Portal"
 
 Use the actual variable names required by the application. Never commit real passwords, API keys, database credentials, or private service-account keys.
 
-### 4. Configure the Database
+### 4. Configure MongoDB and Seed Demo Accounts
 
-If the project uses Prisma, configure its database connection in the appropriate environment file.
+The running backend uses MongoDB through Mongoose. Configure `MONGO_URI` in `backend/.env` if MongoDB is not available at the local default (`mongodb://localhost:27017/certiflow`).
 
-Run:
-
-```bash
-npx prisma db push
-```
-
-If the project includes a Prisma seed script, initialize demonstration data using:
+From the `backend` directory, create the demo users and sample records:
 
 ```bash
-npx tsx prisma/seed.ts
+npm run seed:mongodb
 ```
 
-Run these commands from the `backend` directory.
+**Warning:** The MongoDB demo seeder clears the application's collections before recreating demo data. Run it only against a local or disposable database; it will delete existing records.
 
 ### 5. Start the Backend
 
@@ -210,7 +204,7 @@ The original project documentation describes the following sample accounts:
 | Academic Office | `office@college.edu`  | `password123` |
 | Administrator   | `admin@college.edu`   | `password123` |
 
-These are example credentials from the project documentation. They will work only if the corresponding accounts have been created and configured in the application.
+These accounts are created by `npm run seed:mongodb` from the `backend` directory. The login portals also show the credentials and provide a button to fill them into the form.
 
 **Security note:** Use demonstration credentials only in a local development environment. Never use default demonstration passwords for real institutional accounts.
 
