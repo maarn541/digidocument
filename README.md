@@ -130,9 +130,9 @@ Use the actual variable names required by the application. Never commit real pas
 
 ### 4. Configure MongoDB and Seed Demo Accounts
 
-The running backend uses MongoDB through Mongoose. Configure `MONGO_URI` in `backend/.env` if MongoDB is not available at the local default (`mongodb://localhost:27017/certiflow`). In non-production environments, the backend automatically creates any missing demo users and required student/faculty profiles without deleting existing data.
+The running backend uses MongoDB through Mongoose. Configure `MONGO_URI` in `backend/.env` if MongoDB is not available at the local default (`mongodb://localhost:27017/certiflow`). Submitting one of the documented demo logins automatically creates or refreshes the demo users and required student/faculty profiles; no separate seed command or startup setting is needed. This process does not clear collections.
 
-In production, demo account provisioning is disabled by default. To enable the published demo site, set `ENABLE_DEMO_ACCOUNTS=true` in the backend environment, then restart or redeploy the backend. Do not enable this on a real institution's production system.
+Demo accounts have public, known passwords and include an administrator. This behavior is for a demo deployment only; do not deploy it against a real institution's production database.
 
 From the `backend` directory, create the demo users and sample records:
 

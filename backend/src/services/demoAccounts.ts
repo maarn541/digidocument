@@ -17,7 +17,7 @@ export async function ensureDemoAccounts(): Promise<void> {
     const user = await User.findOneAndUpdate(
       { email: account.email },
       {
-        $setOnInsert: {
+        $set: {
           ...account,
           passwordHash,
           status: 'ACTIVE',

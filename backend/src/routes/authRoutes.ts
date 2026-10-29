@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 import { User, Student, Faculty, Department, Course } from '../models/index.js';
 import { authenticateJWT, AuthRequest } from '../middleware/auth.js';
 import { createAuditLog } from '../services/auditService.js';
+import { ensureDemoAccounts } from '../services/demoAccounts.js';
 import { sendEmail } from '../services/emailService.js';
 
 export const authRouter = Router();
@@ -63,8 +64,25 @@ authRouter.post('/login', async (req: Request, res: Response) => {
       return;
     }
 
+    const normalizedEmail = email.toLowerCase().trim();
+    const isDemoLogin =
+      password === 'password123' &&
+      [
+        'student@college.edu',
+        'faculty@college.edu',
+        'hod@college.edu',
+        'office@college.edu',
+        'admin@college.edu',
+      ].includes(normalizedEmail);
+
+    // Provision the documented demo accounts on demand so hosted demos do not
+    // depend on a startup hook or a separate database seed command.
+    if (isDemoLogin) {
+      await ensureDemoAccounts();
+    }
+
     // Find by email OR student ID OR faculty code
-    let user: any = await User.findOne({ email: email.toLowerCase().trim() }).lean();
+    let user: any = await User.findOne({ email: normalizedEmail }).lean();
 
     if (!user) {
       const student = await Student.findOne({ studentIdNumber: email.toUpperCase().trim() }).lean();
