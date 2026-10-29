@@ -8,6 +8,7 @@ import { requestRouter } from './routes/requestRoutes.js';
 import { documentRouter } from './routes/documentRoutes.js';
 import { adminRouter } from './routes/adminRoutes.js';
 import { notificationRouter } from './routes/notificationRoutes.js';
+import { ensureDemoAccounts } from './services/demoAccounts.js';
 
 dotenv.config();
 
@@ -46,7 +47,10 @@ app.get('/api/health', (req, res) => {
 
 // Connect to MongoDB then start server
 connectMongoDB()
-  .then(() => {
+  .then(async () => {
+    if (process.env.NODE_ENV !== 'production' || process.env.ENABLE_DEMO_ACCOUNTS === 'true') {
+      await ensureDemoAccounts();
+    }
     if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
       app.listen(PORT, () => {
         console.log(`🚀 Academic Workflow Server running at http://localhost:${PORT}`);
